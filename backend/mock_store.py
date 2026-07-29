@@ -99,7 +99,7 @@ class MockMindStore:
         self.tools = self._build_tools(self.agents)
         self._topic_centers = self._build_topic_centers()
         self.memories: list[dict] = []
-        self.embeddings = np.zeros((0, config.EMBEDDING_DIM), dtype=np.float32)
+        self.embeddings = np.zeros((0, config.MOCK_EMBEDDING_DIM), dtype=np.float32)
         for i in range(config.MEMORY_COUNT):
             self._append_memory(index=i)
 
@@ -157,7 +157,7 @@ class MockMindStore:
         return tools
 
     def _build_topic_centers(self) -> np.ndarray:
-        centers = self._np_rng.normal(size=(len(MEMORY_TOPICS), config.EMBEDDING_DIM)).astype(np.float32)
+        centers = self._np_rng.normal(size=(len(MEMORY_TOPICS), config.MOCK_EMBEDDING_DIM)).astype(np.float32)
         return l2_normalize(centers)
 
     def _make_memory_embedding(self, topic_index: int) -> np.ndarray:
@@ -165,7 +165,7 @@ class MockMindStore:
         # noise — otherwise every threshold reads as "dust with no
         # structure" regardless of tuning.
         center = self._topic_centers[topic_index]
-        noise = self._np_rng.normal(scale=0.35, size=config.EMBEDDING_DIM).astype(np.float32)
+        noise = self._np_rng.normal(scale=0.35, size=config.MOCK_EMBEDDING_DIM).astype(np.float32)
         return l2_normalize((center + noise).reshape(1, -1))[0]
 
     def _append_memory(self, index: int | None = None) -> dict:
@@ -183,7 +183,7 @@ class MockMindStore:
             "importance": round(self._rng.uniform(0.1, 1.0), 2),
             "created_at": created_at,
             "tags": self._rng.sample(TAG_VOCAB, k=self._rng.randint(1, 3)),
-            "embedding_dim": config.EMBEDDING_DIM,
+            "embedding_dim": config.MOCK_EMBEDDING_DIM,
         }
         embedding = self._make_memory_embedding(topic_index)
         self.memories.append(memory)
@@ -208,7 +208,7 @@ class MockMindStore:
         ids = [m["id"] for m in served]
         unit = l2_normalize(served_embeddings)
         sim_matrix = cosine_similarity_matrix(unit)
-        raw_edges = top_k_edges(sim_matrix, ids, config.SIMILARITY_TOP_K, config.SIMILARITY_THRESHOLD)
+        raw_edges = top_k_edges(sim_matrix, ids, config.MOCK_SIMILARITY_TOP_K, config.MOCK_SIMILARITY_THRESHOLD)
 
         memory_similarity_edges = [
             {"id": f"sim-{a}-{b}", "source_id": a, "target_id": b, "weight": w} for a, b, w in raw_edges
@@ -241,8 +241,8 @@ class MockMindStore:
         return {
             "generated_at": datetime.now(timezone.utc),
             "config": {
-                "similarity_threshold": config.SIMILARITY_THRESHOLD,
-                "similarity_top_k": config.SIMILARITY_TOP_K,
+                "similarity_threshold": config.MOCK_SIMILARITY_THRESHOLD,
+                "similarity_top_k": config.MOCK_SIMILARITY_TOP_K,
             },
             "regions": regions,
             "nodes": {"core": self.core, "memories": memory_nodes, "tools": self.tools, "agents": self.agents},
@@ -272,7 +272,7 @@ class MockMindStore:
         new_embedding = self.embeddings[-1]
         served_unit = l2_normalize(served_embeddings)
         raw_edges = edges_for_new_vector(
-            new_embedding, served_unit, served_ids, memory["id"], config.SIMILARITY_TOP_K, config.SIMILARITY_THRESHOLD
+            new_embedding, served_unit, served_ids, memory["id"], config.MOCK_SIMILARITY_TOP_K, config.MOCK_SIMILARITY_THRESHOLD
         )
         edges = [
             {"id": f"sim-{memory['id']}-{other}", "source_id": memory["id"], "target_id": other, "weight": w}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JARVIS</title>
+  <link rel="stylesheet" href="/mind/style.css" />
+  <link rel="stylesheet" href="/chat/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="header">
+      <h1>JARVIS</h1>
+      <div id="stats">connecting…</div>
+    </header>
+
+    <main id="chat-log" aria-live="polite"></main>
+
+    <form id="composer">
+      <input id="composer-input" type="text" placeholder="Talk to JARVIS…" autocomplete="off" disabled />
+      <button id="composer-send" type="submit" disabled>Send</button>
+    </form>
+  </div>
+
+  <script type="module" src="/chat/chat.js"></script>
+</body>
+</html>
