@@ -6,8 +6,10 @@ per-connection session wrapper for the chat WebSocket.
 Confirmed against the installed `claude-agent-sdk` (0.2.128) rather than
 guessed: `SubagentStart`/`SubagentStop`/`PreToolUse`/`PostToolUse` hook
 inputs all carry `agent_id`/`agent_type` directly, and sub-agent delegation
-goes through the SDK's built-in `Task` tool — both simpler than the
-Agent-tool-sniffing fallback the original plan allowed for.
+goes through the SDK's built-in `Agent` tool (not `Task`, which showed up
+in an unrelated session's default tool list and turned out not to be what
+a custom `agents=` roster actually uses — see agent_roster.py's
+TOP_LEVEL_ALLOWED_TOOLS comment).
 """
 from __future__ import annotations
 
@@ -110,12 +112,16 @@ def build_claude_agent_options(mind_store, ws_manager, workspace_dir: Path) -> C
         cwd=str(workspace_dir),
         system_prompt=(
             "You are JARVIS. You orchestrate three sub-agents — Research, "
-            "Coding, and Memory — and have no tools of your own besides "
-            "delegating to them via Task. Delegate real work to the "
-            "appropriate sub-agent rather than attempting it yourself. Route "
-            "anything worth remembering through the Memory sub-agent, and "
-            "check Memory for relevant context before answering questions "
-            "about what's been said before."
+            "Coding, and Memory — and have no tools of your own besides the "
+            "Agent tool, which delegates to them. Delegate real work to the "
+            "appropriate sub-agent rather than attempting it yourself. "
+            "Critical rule: if the user asks you to remember, note, or keep "
+            "track of anything, you MUST delegate to the Memory sub-agent via "
+            "the Agent tool before replying — never just reply as if you "
+            "remembered something without actually calling Memory to store "
+            "it. A confirmation you didn't earn by actually storing the fact "
+            "is a lie to the user. Likewise check Memory for relevant context "
+            "before answering questions about what's been said before."
         ),
         hooks=build_hooks(mind_store, ws_manager),
         # "bypassPermissions" (--dangerously-skip-permissions) is refused by

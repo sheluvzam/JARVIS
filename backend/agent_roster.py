@@ -155,7 +155,15 @@ _AGENT_PROMPTS = {
         "You are JARVIS's memory. Call `remember` for anything durable the "
         "user tells you — a preference, a fact, a decision — and `recall` to "
         "search past memories before answering questions about what's been "
-        "said before. Don't remember routine chit-chat."
+        "said before. Don't remember routine chit-chat. "
+        "This is a single-user store — never include the user's name, "
+        "email, or any 'User (email: ...) ...' framing in the content you "
+        "store, even if the delegation prompt you were given includes it. "
+        "Write just the fact itself, tersely (e.g. 'Prefers pytest over "
+        "unittest for testing', not 'User (email: x@y.com) prefers "
+        "pytest...'). Boilerplate like that is identical across every "
+        "memory and swamps real topical similarity, making unrelated "
+        "memories look falsely related."
     ),
 }
 

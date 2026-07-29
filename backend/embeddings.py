@@ -5,11 +5,23 @@ sandbox's egress policy blocks huggingface.co (confirmed via the proxy's
 own status endpoint — a clean 403 policy denial, not a transient failure),
 so model weights can't be downloaded here. Uses scikit-learn's
 HashingVectorizer instead: a fixed-dimensionality vectorizer that needs no
-fitting and no external download, ever. This is real, data-driven text
-similarity (hashed bag-of-words + bigrams, stopwords filtered) — lower
-semantic fidelity than a neural embedding, but never silently fake:
-relatedness comes from actual shared vocabulary in the memory content, and
-it works reliably in this network-constrained environment.
+fitting and no external download, ever.
+
+Uses a character n-gram analyzer (word-boundary-aware, 3-5 chars), not
+word-level bigrams — measured directly against real remembered content
+during tuning (see git history / PR discussion): word-bigram similarity on
+short, terse "memory" sentences produced near-zero similarity even between
+genuinely related memories ("Favorite programming language is Python" vs.
+"Enjoys writing Python scripts for automation" scored 0.126 — barely above
+noise), while unrelated short sentences sharing common phrasing verbs
+("Likes dark roast coffee..." vs. "...dog's name is Biscuit.") scored
+*higher* (0.149) than the real match, purely from coincidental whole-word
+overlap. Character n-grams are robust to morphological variation and don't
+get fooled by shared short structural words the way whole-word bigrams do;
+on the same real data they cleanly separated a genuine topic cluster
+(0.14-0.22) from actual noise (0.03-0.04). Still real, data-driven
+similarity — lower semantic fidelity than a neural embedding, but never
+silently fake.
 """
 from __future__ import annotations
 
@@ -31,10 +43,10 @@ def _get_vectorizer() -> HashingVectorizer:
             if _vectorizer is None:
                 _vectorizer = HashingVectorizer(
                     n_features=config.REAL_EMBEDDING_DIM,
-                    stop_words="english",
+                    analyzer="char_wb",
+                    ngram_range=(3, 5),
                     alternate_sign=False,
                     norm="l2",
-                    ngram_range=(1, 2),
                 )
     return _vectorizer
 

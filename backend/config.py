@@ -18,12 +18,14 @@ JARVIS_MODE = os.environ.get("JARVIS_MODE", "real")
 MOCK_SIMILARITY_THRESHOLD = 0.35
 MOCK_SIMILARITY_TOP_K = 3
 
-# Cosine-similarity edge wiring for the real store. Tuned for
-# HashingVectorizer bag-of-words+bigram cosine similarity (sparser, lower
-# baseline than dense neural embeddings) — expect to retune after real
-# usage; see backend/memory_store.py's docstring for the diagnostic
-# heuristic (hairball = too low, dust = too high).
-REAL_SIMILARITY_THRESHOLD = 0.15
+# Cosine-similarity edge wiring for the real store. Retuned against actual
+# remembered content (see backend/embeddings.py's docstring for the
+# measurements that motivated switching to a char-n-gram analyzer): a real
+# topic cluster measured 0.14-0.22, real noise measured 0.03-0.04, so 0.13
+# separates them with margin on both sides. See backend/memory_store.py's
+# docstring for the diagnostic heuristic if this needs adjusting again
+# (hairball = too low, dust = too high).
+REAL_SIMILARITY_THRESHOLD = 0.13
 REAL_SIMILARITY_TOP_K = 3
 
 # Real memory store + agent sandbox (real mode only).
