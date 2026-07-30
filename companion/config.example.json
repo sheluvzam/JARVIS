@@ -1,0 +1,4 @@
+{
+  "backend_url": "ws://<your-jarvis-backend-host>/ws/companion",
+  "token": "<paste the token printed by the JARVIS backend at startup>"
+}

@@ -18,12 +18,14 @@ jobs:
 
       # Deliberately not the full requirements.txt: py_compile needs no
       # imports resolved at all, and the tested modules (similarity.py,
-      # mock_store.py) need nothing beyond numpy/pydantic. This skips the
+      # mock_store.py, companion.py) need nothing beyond numpy/pydantic/
+      # fastapi (companion.py only imports fastapi for a WebSocket type
+      # hint — its own tests never open a real socket). This skips the
       # heavier claude-agent-sdk/scikit-learn installs since nothing in CI
       # imports agent_core.py/memory_store.py/embeddings.py (those need a
       # live ANTHROPIC_API_KEY and network access, out of scope here).
       - name: Install dependencies
-        run: pip install numpy pydantic pytest
+        run: pip install numpy pydantic pytest fastapi
 
       - name: Syntax check all backend modules
         run: python -m py_compile backend/*.py
