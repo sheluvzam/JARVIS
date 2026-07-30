@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Deliberately not the full requirements.txt: py_compile needs no
+      # imports resolved at all, and the tested modules (similarity.py,
+      # mock_store.py) need nothing beyond numpy/pydantic. This skips the
+      # heavier claude-agent-sdk/scikit-learn installs since nothing in CI
+      # imports agent_core.py/memory_store.py/embeddings.py (those need a
+      # live ANTHROPIC_API_KEY and network access, out of scope here).
+      - name: Install dependencies
+        run: pip install numpy pydantic pytest
+
+      - name: Syntax check all backend modules
+        run: python -m py_compile backend/*.py
+
+      - name: Run backend tests
+        run: python -m pytest backend/tests -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Syntax check all frontend JS
+        run: |
+          find static -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Run frontend tests
+        run: node --test 'static/**/*.test.mjs'
