@@ -12,11 +12,13 @@
     <header id="header">
       <h1>JARVIS</h1>
       <div id="stats">connecting…</div>
+      <button id="voice-output-toggle" type="button" aria-label="Toggle voice replies">🔊</button>
     </header>
 
     <main id="chat-log" aria-live="polite"></main>
 
     <form id="composer">
+      <button id="mic-button" type="button" aria-label="Speak" disabled>🎤</button>
       <input id="composer-input" type="text" placeholder="Talk to JARVIS…" autocomplete="off" disabled />
       <button id="composer-send" type="submit" disabled>Send</button>
     </form>
