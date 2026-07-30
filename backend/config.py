@@ -57,3 +57,10 @@ WS_QUEUE_MAXSIZE = 50
 WS_PRUNE_INTERVAL_SECONDS = 15.0
 WS_STALE_AFTER_SECONDS = 60.0
 WS_HEARTBEAT_INTERVAL_SECONDS = 20.0
+
+# Desktop companion (real mode only). The token is generated once and
+# persisted here (gitignored, like jarvis.db) rather than passed via env,
+# so a restart doesn't silently invalidate an already-paired companion.
+COMPANION_TOKEN_PATH = DATA_DIR / "companion_token.txt"
+COMPANION_PAIRING_TIMEOUT_SECONDS = 10.0
+COMPANION_COMMAND_TIMEOUT_SECONDS = 30.0

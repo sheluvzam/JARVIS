@@ -48,6 +48,25 @@ AGENTS: list[dict] = [
         "role": "Memory",
         "tool_ids": ["tool-memory-remember", "tool-memory-recall"],
     },
+    {
+        "id": "agent-desktop",
+        "label": "Desktop Agent",
+        "role": "Desktop",
+        # Every one of these dispatches, over CompanionBridge, to a
+        # separate local program the user runs on their own machine (see
+        # companion/) — none of it touches this backend's own sandbox.
+        "tool_ids": [
+            "tool-desktop-screenshot",
+            "tool-desktop-active-window",
+            "tool-desktop-list-files",
+            "tool-desktop-read-file",
+            "tool-desktop-run-command",
+            "tool-desktop-move-mouse",
+            "tool-desktop-click",
+            "tool-desktop-type-text",
+            "tool-desktop-key-press",
+        ],
+    },
 ]
 
 # `sdk_tool_name` is what goes into ClaudeAgentOptions/AgentDefinition
@@ -123,6 +142,69 @@ TOOLS: list[dict] = [
         "owner_agent_id": "agent-memory",
         "sdk_tool_name": "mcp__jarvis_memory__recall",
     },
+    {
+        "id": "tool-desktop-screenshot",
+        "label": "screenshot",
+        "category": "desktop",
+        "owner_agent_id": "agent-desktop",
+        "sdk_tool_name": "mcp__jarvis_desktop__screenshot",
+    },
+    {
+        "id": "tool-desktop-active-window",
+        "label": "get_active_window",
+        "category": "desktop",
+        "owner_agent_id": "agent-desktop",
+        "sdk_tool_name": "mcp__jarvis_desktop__get_active_window",
+    },
+    {
+        "id": "tool-desktop-list-files",
+        "label": "list_files",
+        "category": "desktop",
+        "owner_agent_id": "agent-desktop",
+        "sdk_tool_name": "mcp__jarvis_desktop__list_files",
+    },
+    {
+        "id": "tool-desktop-read-file",
+        "label": "read_file",
+        "category": "desktop",
+        "owner_agent_id": "agent-desktop",
+        "sdk_tool_name": "mcp__jarvis_desktop__read_file",
+    },
+    {
+        "id": "tool-desktop-run-command",
+        "label": "run_command",
+        "category": "desktop",
+        "owner_agent_id": "agent-desktop",
+        "sdk_tool_name": "mcp__jarvis_desktop__run_command",
+    },
+    {
+        "id": "tool-desktop-move-mouse",
+        "label": "move_mouse",
+        "category": "desktop",
+        "owner_agent_id": "agent-desktop",
+        "sdk_tool_name": "mcp__jarvis_desktop__move_mouse",
+    },
+    {
+        "id": "tool-desktop-click",
+        "label": "click",
+        "category": "desktop",
+        "owner_agent_id": "agent-desktop",
+        "sdk_tool_name": "mcp__jarvis_desktop__click",
+    },
+    {
+        "id": "tool-desktop-type-text",
+        "label": "type_text",
+        "category": "desktop",
+        "owner_agent_id": "agent-desktop",
+        "sdk_tool_name": "mcp__jarvis_desktop__type_text",
+    },
+    {
+        "id": "tool-desktop-key-press",
+        "label": "key_press",
+        "category": "desktop",
+        "owner_agent_id": "agent-desktop",
+        "sdk_tool_name": "mcp__jarvis_desktop__key_press",
+    },
 ]
 
 TOOLS_BY_ID: dict[str, dict] = {t["id"]: t for t in TOOLS}
@@ -182,12 +264,28 @@ _AGENT_PROMPTS = {
         "memory and swamps real topical similarity, making unrelated "
         "memories look falsely related."
     ),
+    "agent-desktop": (
+        "You control the user's real computer through a connected "
+        "companion device — screenshot, get_active_window, list_files, "
+        "read_file, run_command, move_mouse, click, type_text, key_press. "
+        "This is their actual machine, not a sandbox: there is no "
+        "confirmation step before an action runs, so be deliberate. Look "
+        "before you act — take a screenshot or check the active window "
+        "before clicking or typing somewhere specific, rather than "
+        "guessing coordinates. Prefer the most targeted action available "
+        "(e.g. run_command to launch a specific app rather than clicking "
+        "through a UI to find it). If a tool call fails or returns an "
+        "error — including 'no companion device is connected' — say so "
+        "plainly; never claim an action succeeded, or describe a screen or "
+        "file you didn't actually just read via a tool call in this turn."
+    ),
 }
 
 _AGENT_DESCRIPTIONS = {
     "agent-research": "Finds and verifies information on the web.",
     "agent-coding": "Reads, writes, and runs code in a sandboxed directory.",
     "agent-memory": "Stores and recalls JARVIS's durable memories.",
+    "agent-desktop": "Controls the user's real computer via a paired companion device.",
 }
 
 

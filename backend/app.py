@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend import config
 from backend.agent_core import AgentSession, build_claude_agent_options
+from backend.companion import CompanionBridge, get_or_create_token
 from backend.events import live_event_simulator
 from backend.mock_store import MockMindStore
 from backend.schemas import SkeletonResponse
@@ -40,6 +41,7 @@ async def lifespan(app: FastAPI):
     app.state.ws_manager = ConnectionManager()
     app.state.ws_manager.start()
     app.state.agent_options = None
+    app.state.companion = None
     event_task = None
 
     if config.JARVIS_MODE == "mock":
@@ -57,8 +59,12 @@ async def lifespan(app: FastAPI):
         from backend.memory_store import RealMindStore
 
         app.state.mind_store = RealMindStore(config.DB_PATH, embeddings)
+        app.state.companion = CompanionBridge(get_or_create_token())
+        # Printed, not just logged at debug level — this is the one-time
+        # setup step a human needs to complete the companion/ pairing.
+        print(f"[jarvis] companion pairing token (put this in companion/config.json): {app.state.companion.token}")
         app.state.agent_options = build_claude_agent_options(
-            app.state.mind_store, app.state.ws_manager, config.SANDBOX_DIR
+            app.state.mind_store, app.state.ws_manager, config.SANDBOX_DIR, app.state.companion
         )
 
     try:
@@ -83,6 +89,48 @@ async def ws_mind_live(websocket: WebSocket):
     key = await manager.connect(websocket)
     manager.send_to(key, {"type": "hello", "server_time": datetime.now(timezone.utc).isoformat()})
     await manager.run_receive_loop(key, websocket)
+
+
+@app.websocket("/ws/companion")
+async def ws_companion(websocket: WebSocket):
+    # Same shape as /ws/chat: a single logical peer (the user's one
+    # machine), not fan-out broadcast, so this bypasses ConnectionManager
+    # too. The companion is the client here — it dials out to us, we never
+    # dial out to it — so this route only ever reads.
+    await websocket.accept()
+
+    companion: CompanionBridge | None = app.state.companion
+    if companion is None:
+        await websocket.send_json({"type": "error", "message": "desktop companion is unavailable in mock mode"})
+        await websocket.close()
+        return
+
+    try:
+        pairing = await asyncio.wait_for(
+            websocket.receive_json(), timeout=config.COMPANION_PAIRING_TIMEOUT_SECONDS
+        )
+    except (asyncio.TimeoutError, WebSocketDisconnect):
+        await websocket.close()
+        return
+
+    if pairing.get("type") != "pair" or not companion.check_token(pairing.get("token", "")):
+        await websocket.send_json({"type": "error", "message": "invalid pairing token"})
+        await websocket.close()
+        return
+
+    companion.attach(websocket)
+    await websocket.send_json({"type": "paired"})
+    try:
+        while True:
+            frame = await websocket.receive_json()
+            if frame.get("type") == "result":
+                companion.handle_result(
+                    frame.get("request_id"), frame.get("ok", False), frame.get("data"), frame.get("error")
+                )
+    except WebSocketDisconnect:
+        pass
+    finally:
+        companion.detach(websocket)
 
 
 @app.websocket("/ws/chat")
