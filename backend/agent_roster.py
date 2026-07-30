@@ -73,6 +73,20 @@ AGENTS: list[dict] = [
         "role": "Workflow",
         "tool_ids": ["tool-workflow-create", "tool-workflow-list", "tool-workflow-delete"],
     },
+    {
+        "id": "agent-tasks",
+        "label": "Tasks Agent",
+        "role": "Tasks",
+        "tool_ids": [
+            "tool-tasks-create",
+            "tool-tasks-list",
+            "tool-tasks-complete",
+            "tool-tasks-delete",
+            "tool-focus-start",
+            "tool-focus-end",
+            "tool-focus-status",
+        ],
+    },
 ]
 
 # `sdk_tool_name` is what goes into ClaudeAgentOptions/AgentDefinition
@@ -232,6 +246,55 @@ TOOLS: list[dict] = [
         "owner_agent_id": "agent-workflow",
         "sdk_tool_name": "mcp__jarvis_workflow__delete_workflow",
     },
+    {
+        "id": "tool-tasks-create",
+        "label": "create_task",
+        "category": "tasks",
+        "owner_agent_id": "agent-tasks",
+        "sdk_tool_name": "mcp__jarvis_tasks__create_task",
+    },
+    {
+        "id": "tool-tasks-list",
+        "label": "list_tasks",
+        "category": "tasks",
+        "owner_agent_id": "agent-tasks",
+        "sdk_tool_name": "mcp__jarvis_tasks__list_tasks",
+    },
+    {
+        "id": "tool-tasks-complete",
+        "label": "complete_task",
+        "category": "tasks",
+        "owner_agent_id": "agent-tasks",
+        "sdk_tool_name": "mcp__jarvis_tasks__complete_task",
+    },
+    {
+        "id": "tool-tasks-delete",
+        "label": "delete_task",
+        "category": "tasks",
+        "owner_agent_id": "agent-tasks",
+        "sdk_tool_name": "mcp__jarvis_tasks__delete_task",
+    },
+    {
+        "id": "tool-focus-start",
+        "label": "start_focus_session",
+        "category": "focus",
+        "owner_agent_id": "agent-tasks",
+        "sdk_tool_name": "mcp__jarvis_tasks__start_focus_session",
+    },
+    {
+        "id": "tool-focus-end",
+        "label": "end_focus_session",
+        "category": "focus",
+        "owner_agent_id": "agent-tasks",
+        "sdk_tool_name": "mcp__jarvis_tasks__end_focus_session",
+    },
+    {
+        "id": "tool-focus-status",
+        "label": "get_focus_status",
+        "category": "focus",
+        "owner_agent_id": "agent-tasks",
+        "sdk_tool_name": "mcp__jarvis_tasks__get_focus_status",
+    },
 ]
 
 TOOLS_BY_ID: dict[str, dict] = {t["id"]: t for t in TOOLS}
@@ -320,6 +383,18 @@ _AGENT_PROMPTS = {
         "actually calling create_workflow — never claim a schedule exists "
         "without having stored it."
     ),
+    "agent-tasks": (
+        "You manage the user's task list and focus sessions — create_task, "
+        "list_tasks, complete_task, delete_task, start_focus_session, "
+        "end_focus_session, get_focus_status. Only one focus session can be "
+        "active at a time; if starting one fails because another is already "
+        "active, say so rather than pretending it started. These tools "
+        "track state honestly — they don't block distracting apps or "
+        "notifications themselves; if the user wants that, say the focus "
+        "session is now active and note the orchestrator can separately "
+        "delegate to Desktop for that. Confirm any change only after "
+        "actually calling the corresponding tool."
+    ),
 }
 
 _AGENT_DESCRIPTIONS = {
@@ -328,6 +403,7 @@ _AGENT_DESCRIPTIONS = {
     "agent-memory": "Stores and recalls JARVIS's durable memories.",
     "agent-desktop": "Controls the user's real computer via a paired companion device.",
     "agent-workflow": "Creates, lists, and deletes JARVIS's own scheduled automation.",
+    "agent-tasks": "Manages the user's task list and focus sessions.",
 }
 
 

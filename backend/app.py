@@ -30,6 +30,7 @@ from backend.events import live_event_simulator
 from backend.mock_store import MockMindStore
 from backend.scheduler import workflow_scheduler
 from backend.schemas import SkeletonResponse
+from backend.task_store import TaskStore
 from backend.workflow_store import WorkflowStore
 from backend.ws_manager import ConnectionManager
 
@@ -67,8 +68,14 @@ async def lifespan(app: FastAPI):
         # setup step a human needs to complete the companion/ pairing.
         print(f"[jarvis] companion pairing token (put this in companion/config.json): {app.state.companion.token}")
         workflow_store = WorkflowStore(config.DB_PATH)
+        task_store = TaskStore(config.DB_PATH)
         app.state.agent_options = build_claude_agent_options(
-            app.state.mind_store, app.state.ws_manager, config.SANDBOX_DIR, app.state.companion, workflow_store
+            app.state.mind_store,
+            app.state.ws_manager,
+            config.SANDBOX_DIR,
+            app.state.companion,
+            workflow_store,
+            task_store,
         )
         scheduler_task = asyncio.create_task(
             workflow_scheduler(workflow_store, app.state.agent_options, app.state.ws_manager)
