@@ -1,12 +1,26 @@
 :root {
   color-scheme: dark;
-  --bg: #050508;
-  --ink: #e8e6f2;
-  --dim: #8b87a3;
-  --accent: #8a5cff;
-  --accent-soft: rgba(138, 92, 255, 0.35);
-  --panel-bg: rgba(10, 9, 18, 0.72);
-  --panel-border: rgba(138, 92, 255, 0.25);
+  --bg: #030608;
+  --ink: #d6f6ff;
+  --dim: #4d7480;
+  --accent: #00d9ff;
+  --accent-soft: rgba(0, 217, 255, 0.35);
+  --panel-bg: rgba(3, 12, 16, 0.72);
+  --panel-border: rgba(0, 217, 255, 0.35);
+  /* Cut-corner "HUD panel" outline — top-left and bottom-right corners
+     clipped instead of rounded. Applied directly to the few larger panel
+     elements (#legend, #inspector-panel, chat bubbles/composer) via
+     `clip-path: var(--hud-clip)`, not globally — small controls (buttons,
+     inputs) stay rectangular rather than fighting the clip-path. */
+  --hud-cut: 10px;
+  --hud-clip: polygon(
+    var(--hud-cut) 0,
+    100% 0,
+    100% calc(100% - var(--hud-cut)),
+    calc(100% - var(--hud-cut)) 100%,
+    0 100%,
+    0 var(--hud-cut)
+  );
 }
 
 * {
@@ -19,7 +33,7 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--ink);
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
   overflow: hidden;
 }
 
@@ -27,6 +41,26 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+/* Holographic-projection overlay: faint scanlines + a radial vignette.
+   Fixed/pointer-events:none so it never interferes with the canvas or UI
+   underneath — purely decorative, no new markup needed. */
+#app::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 217, 255, 0.035) 0px,
+      rgba(0, 217, 255, 0.035) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 4, 6, 0.55) 100%);
 }
 
 #scene-canvas {
@@ -53,17 +87,19 @@ body {
 #header h1 {
   margin: 0;
   font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--ink);
-  opacity: 0.85;
+  color: var(--accent);
+  text-shadow: 0 0 8px var(--accent-soft);
+  opacity: 0.9;
 }
 
 #stats {
   font-size: 0.8rem;
   color: var(--dim);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 
@@ -81,7 +117,8 @@ body {
   gap: 0.4rem;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
-  border-radius: 10px;
+  clip-path: var(--hud-clip);
+  box-shadow: 0 0 16px rgba(0, 217, 255, 0.08), inset 0 0 20px rgba(0, 217, 255, 0.05);
   padding: 0.75rem 0.9rem;
   backdrop-filter: blur(6px);
   min-width: 10rem;
@@ -107,6 +144,7 @@ body {
   border-radius: 50%;
   display: inline-block;
   flex: none;
+  box-shadow: 0 0 6px currentColor;
 }
 
 .legend-count {
@@ -125,7 +163,8 @@ body {
   overflow-y: auto;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
-  border-radius: 10px;
+  clip-path: var(--hud-clip);
+  box-shadow: 0 0 16px rgba(0, 217, 255, 0.08), inset 0 0 20px rgba(0, 217, 255, 0.05);
   padding: 1rem 1.1rem;
   backdrop-filter: blur(6px);
   font-size: 0.82rem;
@@ -139,15 +178,18 @@ body {
 #inspector-panel h2 {
   margin: 0 0 0.5rem;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--accent);
+  text-shadow: 0 0 8px var(--accent-soft);
 }
 
 #inspector-panel dt {
   color: var(--dim);
   font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   margin-top: 0.55rem;
 }
 
@@ -159,7 +201,7 @@ body {
 .mind-label {
   color: var(--ink);
   font-size: 0.72rem;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
   pointer-events: none;
   white-space: nowrap;
@@ -167,11 +209,13 @@ body {
 
 .mind-label.region {
   text-transform: uppercase;
-  font-weight: 600;
-  opacity: 0.8;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
 }
 
 .mind-label.agent {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--accent);
+  text-shadow: 0 0 8px var(--accent-soft), 0 0 6px rgba(0, 0, 0, 0.9);
 }

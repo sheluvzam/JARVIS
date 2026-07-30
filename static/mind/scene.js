@@ -327,6 +327,41 @@ function centroid(positionsMap) {
   return n > 0 ? v.multiplyScalar(1 / n) : v;
 }
 
+// Concentric "arc reactor" rings around the Core — thin toruses (not flat
+// rings) so they read as glowing 3D orbits from any camera angle rather
+// than flattening to a disc edge-on. Each gets its own static tilt (so
+// they sit on distinct planes, not stacked flat) and spins continuously
+// around a different axis than its tilt, so the set visibly precesses
+// instead of just spinning in place. Radii are multiples of the core
+// sphere's own radius so they scale with it automatically.
+const HUD_RING_CONFIGS = [
+  { radiusMul: 1.45, tube: 0.02, tilt: { x: Math.PI / 2.2, y: 0, z: 0 }, spin: { axis: "z", speed: 0.18 } },
+  { radiusMul: 1.8, tube: 0.015, tilt: { x: 0, y: Math.PI / 2.6, z: 0.3 }, spin: { axis: "x", speed: -0.13 } },
+  { radiusMul: 2.15, tube: 0.012, tilt: { x: 0.4, y: 0, z: Math.PI / 2.8 }, spin: { axis: "y", speed: 0.1 } },
+];
+
+function buildHudRings(coreRadius, color) {
+  const group = new THREE.Group();
+  group.name = "core-hud-rings";
+  const rings = HUD_RING_CONFIGS.map(({ radiusMul, tube, tilt, spin }) => {
+    const geometry = new THREE.TorusGeometry(coreRadius * radiusMul, tube, 8, 96);
+    const material = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.4,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.set(tilt.x, tilt.y, tilt.z);
+    mesh.userData.spinAxis = spin.axis;
+    mesh.userData.spinSpeed = spin.speed;
+    group.add(mesh);
+    return mesh;
+  });
+  return { group, rings };
+}
+
 function buildCore(skeleton) {
   const color = regionColor(skeleton, "core");
   const core = skeleton.nodes.core;
@@ -355,10 +390,12 @@ function buildCore(skeleton) {
   haloGeometry.setAttribute("aScale", new THREE.BufferAttribute(new Float32Array(haloVertexCount).fill(9), 1));
   const halo = new THREE.Mesh(haloGeometry, buildHaloMaterial(color, 0.5));
 
+  const { group: ringGroup, rings } = buildHudRings(2.2, color);
+
   const group = new THREE.Group();
   group.name = "region-core";
-  group.add(mesh, halo);
-  return { group, mesh };
+  group.add(mesh, halo, ringGroup);
+  return { group, mesh, rings };
 }
 
 // `reserve` pre-allocates extra vertex-pair slots (unused, drawRange
@@ -501,9 +538,10 @@ function buildRegions(skeleton, layout) {
     nodeList.forEach((node) => state.nodesById.set(node.id, { ...node, region: id }));
   });
 
-  const { group: coreGroup, mesh: coreMesh } = buildCore(skeleton);
+  const { group: coreGroup, mesh: coreMesh, rings: hudRings } = buildCore(skeleton);
   state.scene.add(coreGroup);
   state.coreMesh = coreMesh;
+  state.hudRings = hudRings;
   state.nodesById.set("core", { ...skeleton.nodes.core, region: "core" });
 
   const { lines, counts } = buildEdgeLines(skeleton, layout);
@@ -828,6 +866,12 @@ function animate(nowMs) {
 
   state.controls.update();
   updateFlares(nowMs);
+
+  if (state.hudRings) {
+    state.hudRings.forEach((ring) => {
+      ring.rotation[ring.userData.spinAxis] += deltaSeconds * ring.userData.spinSpeed;
+    });
+  }
 
   if (state.pulsesEnabled) {
     state.pulsePool.update(deltaSeconds);
