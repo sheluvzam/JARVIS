@@ -28,7 +28,9 @@ from backend.agent_core import AgentSession, build_claude_agent_options
 from backend.companion import CompanionBridge, get_or_create_token
 from backend.events import live_event_simulator
 from backend.mock_store import MockMindStore
+from backend.scheduler import workflow_scheduler
 from backend.schemas import SkeletonResponse
+from backend.workflow_store import WorkflowStore
 from backend.ws_manager import ConnectionManager
 
 STATIC_MIND_DIR = Path(__file__).resolve().parent.parent / "static" / "mind"
@@ -43,6 +45,7 @@ async def lifespan(app: FastAPI):
     app.state.agent_options = None
     app.state.companion = None
     event_task = None
+    scheduler_task = None
 
     if config.JARVIS_MODE == "mock":
         # Constructed exactly once — the REST handler and the WS live-event
@@ -63,8 +66,12 @@ async def lifespan(app: FastAPI):
         # Printed, not just logged at debug level — this is the one-time
         # setup step a human needs to complete the companion/ pairing.
         print(f"[jarvis] companion pairing token (put this in companion/config.json): {app.state.companion.token}")
+        workflow_store = WorkflowStore(config.DB_PATH)
         app.state.agent_options = build_claude_agent_options(
-            app.state.mind_store, app.state.ws_manager, config.SANDBOX_DIR, app.state.companion
+            app.state.mind_store, app.state.ws_manager, config.SANDBOX_DIR, app.state.companion, workflow_store
+        )
+        scheduler_task = asyncio.create_task(
+            workflow_scheduler(workflow_store, app.state.agent_options, app.state.ws_manager)
         )
 
     try:
@@ -72,6 +79,8 @@ async def lifespan(app: FastAPI):
     finally:
         if event_task is not None:
             event_task.cancel()
+        if scheduler_task is not None:
+            scheduler_task.cancel()
         await app.state.ws_manager.stop()
 
 
