@@ -18,15 +18,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from claude_agent_sdk import (
+    AssistantMessage,
     ClaudeAgentOptions,
     ClaudeSDKClient,
     HookMatcher,
+    ResultMessage,
+    TextBlock,
     create_sdk_mcp_server,
     tool,
 )
 
 from backend import agent_roster
 from backend.companion import CompanionBridge, CompanionError
+from backend.workflow_store import WorkflowStore, WorkflowValidationError
 
 # Default per-broadcast activity level while a sub-agent is working — the
 # real signal is *which* agent lit up and when, not a precise magnitude.
@@ -193,6 +197,65 @@ def build_desktop_mcp_server(companion: CompanionBridge):
     )
 
 
+def build_workflow_mcp_server(workflow_store: WorkflowStore):
+    """The Workflow sub-agent's real tools — create/list/delete rows in
+    WorkflowStore. Actually *running* a due workflow happens in
+    backend/scheduler.py's background task, not here; these tools only
+    manage the schedule."""
+
+    @tool(
+        "create_workflow",
+        "Schedule an instruction to run automatically, unattended, either on a fixed interval or once "
+        "daily at a UTC time. Times are always UTC — ask the user for their UTC offset if they give a "
+        "local time.",
+        {"instruction": str, "schedule_kind": str, "interval_minutes": int, "daily_time_utc": str},
+    )
+    async def _create_workflow(args: dict) -> dict:
+        try:
+            workflow = workflow_store.create(
+                instruction=args["instruction"],
+                schedule_kind=args["schedule_kind"],
+                interval_minutes=args.get("interval_minutes"),
+                daily_time_utc=args.get("daily_time_utc"),
+            )
+        except WorkflowValidationError as exc:
+            return _text_result(f"Could not create workflow: {exc}")
+        schedule = (
+            f"every {workflow['interval_minutes']} minute(s)"
+            if workflow["schedule_kind"] == "interval"
+            else f"daily at {workflow['daily_time_utc']} UTC"
+        )
+        return _text_result(f"Scheduled ({workflow['id']}): \"{workflow['instruction']}\" — {schedule}.")
+
+    @tool("list_workflows", "List all scheduled workflows and their last run status.", {})
+    async def _list_workflows(args: dict) -> dict:
+        workflows = workflow_store.list()
+        if not workflows:
+            return _text_result("No workflows scheduled.")
+        lines = []
+        for wf in workflows:
+            schedule = (
+                f"every {wf['interval_minutes']} minute(s)"
+                if wf["schedule_kind"] == "interval"
+                else f"daily at {wf['daily_time_utc']} UTC"
+            )
+            status = "enabled" if wf["enabled"] else "disabled"
+            last_run = wf["last_run_at"] or "never"
+            lines.append(f"- ({wf['id']}) \"{wf['instruction']}\" — {schedule}, {status}, last run: {last_run}")
+        return _text_result("\n".join(lines))
+
+    @tool("delete_workflow", "Delete a scheduled workflow by id.", {"workflow_id": str})
+    async def _delete_workflow(args: dict) -> dict:
+        deleted = workflow_store.delete(args["workflow_id"])
+        if deleted:
+            return _text_result(f"Deleted workflow {args['workflow_id']}.")
+        return _text_result(f"No workflow found with id {args['workflow_id']}.")
+
+    return create_sdk_mcp_server(
+        name="jarvis_workflow", version="1.0.0", tools=[_create_workflow, _list_workflows, _delete_workflow]
+    )
+
+
 def build_hooks(mind_store, ws_manager) -> dict[str, list[HookMatcher]]:
     async def _on_subagent_start(input_data, tool_use_id, context):
         agent_id = input_data["agent_type"]
@@ -226,22 +289,27 @@ def build_hooks(mind_store, ws_manager) -> dict[str, list[HookMatcher]]:
 
 
 def build_claude_agent_options(
-    mind_store, ws_manager, workspace_dir: Path, companion: CompanionBridge
+    mind_store, ws_manager, workspace_dir: Path, companion: CompanionBridge, workflow_store: WorkflowStore
 ) -> ClaudeAgentOptions:
     workspace_dir.mkdir(parents=True, exist_ok=True)
     memory_server = build_memory_mcp_server(mind_store, ws_manager)
     desktop_server = build_desktop_mcp_server(companion)
+    workflow_server = build_workflow_mcp_server(workflow_store)
     return ClaudeAgentOptions(
-        mcp_servers={"jarvis_memory": memory_server, "jarvis_desktop": desktop_server},
+        mcp_servers={
+            "jarvis_memory": memory_server,
+            "jarvis_desktop": desktop_server,
+            "jarvis_workflow": workflow_server,
+        },
         agents=agent_roster.build_agent_definitions(),
         allowed_tools=agent_roster.TOP_LEVEL_ALLOWED_TOOLS,
         cwd=str(workspace_dir),
         system_prompt=(
-            "You are JARVIS. You orchestrate four sub-agents — Research, "
-            "Coding, Memory, and Desktop — and have no tools of your own "
-            "besides the Agent tool, which delegates to them. Delegate real "
-            "work to the appropriate sub-agent rather than attempting it "
-            "yourself. "
+            "You are JARVIS. You orchestrate five sub-agents — Research, "
+            "Coding, Memory, Desktop, and Workflow — and have no tools of "
+            "your own besides the Agent tool, which delegates to them. "
+            "Delegate real work to the appropriate sub-agent rather than "
+            "attempting it yourself. "
             "Critical rule: if the user asks you to remember, note, or keep "
             "track of anything, you MUST delegate to the Memory sub-agent via "
             "the Agent tool before replying — never just reply as if you "
@@ -257,7 +325,13 @@ def build_claude_agent_options(
             "things that actually require touching their screen, files, or "
             "OS; if a companion device isn't connected it will tell you so, "
             "and you should relay that plainly rather than pretending the "
-            "action happened."
+            "action happened. "
+            "Critical rule: if the user asks you to schedule, automate, or "
+            "set up something recurring, you MUST delegate to the Workflow "
+            "sub-agent via the Agent tool to actually create it before "
+            "confirming — the same rule as Memory, for the same reason. "
+            "Workflow schedules are always in UTC; if the user gives a local "
+            "time, ask for their UTC offset first rather than guessing it."
         ),
         hooks=build_hooks(mind_store, ws_manager),
         # "bypassPermissions" (--dangerously-skip-permissions) is refused by
@@ -292,3 +366,37 @@ class AgentSession:
 
     async def close(self) -> None:
         await self._client.disconnect()
+
+
+# Observed directly this session: the orchestrator sometimes delegates with
+# `run_in_background: true` and replies immediately ("I've sent it off,
+# I'll let you know") while the real work continues asynchronously — fine
+# in live chat, fatal for a one-shot unattended run where nothing is left
+# listening for the later report. This prefix is a deterministic fix, not
+# a timing hack: tell the orchestrator explicitly not to do that here.
+_UNATTENDED_RUN_PREFIX = (
+    "[Scheduled, unattended run — no one is watching this turn live. Do "
+    "not delegate with run_in_background: this turn must produce a "
+    "complete result before finishing, not a 'the sub-agent will report "
+    "back' placeholder.]\n\n"
+)
+
+
+async def run_agent_turn(options: ClaudeAgentOptions, instruction: str) -> str:
+    """A one-shot, headless sibling of AgentSession — connect, run exactly
+    one turn, collect the full assistant reply, disconnect. Used by
+    backend/scheduler.py to execute a due workflow with no chat WebSocket
+    or human attached."""
+    client = ClaudeSDKClient(options=options)
+    await client.connect()
+    try:
+        await client.query(_UNATTENDED_RUN_PREFIX + instruction)
+        reply = ""
+        async for message in client.receive_response():
+            if isinstance(message, AssistantMessage):
+                reply += "".join(block.text for block in message.content if isinstance(block, TextBlock))
+            elif isinstance(message, ResultMessage):
+                break
+        return reply
+    finally:
+        await client.disconnect()

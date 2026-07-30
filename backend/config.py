@@ -64,3 +64,9 @@ WS_HEARTBEAT_INTERVAL_SECONDS = 20.0
 COMPANION_TOKEN_PATH = DATA_DIR / "companion_token.txt"
 COMPANION_PAIRING_TIMEOUT_SECONDS = 10.0
 COMPANION_COMMAND_TIMEOUT_SECONDS = 30.0
+
+# Workflow scheduler (real mode only). 60s is the minimum granularity for
+# both interval- and daily-kind schedules — a workflow due mid-poll fires
+# on the next tick, never more than this many seconds late.
+WORKFLOW_POLL_INTERVAL_SECONDS = 60.0
+WORKFLOW_RESULT_PREVIEW_CHARS = 200

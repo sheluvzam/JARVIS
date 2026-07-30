@@ -67,6 +67,12 @@ AGENTS: list[dict] = [
             "tool-desktop-key-press",
         ],
     },
+    {
+        "id": "agent-workflow",
+        "label": "Workflow Agent",
+        "role": "Workflow",
+        "tool_ids": ["tool-workflow-create", "tool-workflow-list", "tool-workflow-delete"],
+    },
 ]
 
 # `sdk_tool_name` is what goes into ClaudeAgentOptions/AgentDefinition
@@ -205,6 +211,27 @@ TOOLS: list[dict] = [
         "owner_agent_id": "agent-desktop",
         "sdk_tool_name": "mcp__jarvis_desktop__key_press",
     },
+    {
+        "id": "tool-workflow-create",
+        "label": "create_workflow",
+        "category": "workflow",
+        "owner_agent_id": "agent-workflow",
+        "sdk_tool_name": "mcp__jarvis_workflow__create_workflow",
+    },
+    {
+        "id": "tool-workflow-list",
+        "label": "list_workflows",
+        "category": "workflow",
+        "owner_agent_id": "agent-workflow",
+        "sdk_tool_name": "mcp__jarvis_workflow__list_workflows",
+    },
+    {
+        "id": "tool-workflow-delete",
+        "label": "delete_workflow",
+        "category": "workflow",
+        "owner_agent_id": "agent-workflow",
+        "sdk_tool_name": "mcp__jarvis_workflow__delete_workflow",
+    },
 ]
 
 TOOLS_BY_ID: dict[str, dict] = {t["id"]: t for t in TOOLS}
@@ -279,6 +306,20 @@ _AGENT_PROMPTS = {
         "plainly; never claim an action succeeded, or describe a screen or "
         "file you didn't actually just read via a tool call in this turn."
     ),
+    "agent-workflow": (
+        "You manage JARVIS's own scheduled, unattended automation — "
+        "create_workflow, list_workflows, delete_workflow. Schedules are "
+        "either 'interval' (every N minutes) or 'daily' (once per day at a "
+        "UTC time, 'HH:MM'). Always UTC — if the user gives a local time or "
+        "doesn't specify a timezone, ask for their UTC offset rather than "
+        "guessing. When a workflow fires later, it runs as a fresh, "
+        "unattended turn through the same orchestrator and sub-agents — the "
+        "instruction you schedule should be self-contained (say what to do "
+        "and, if relevant, what to do with the result, e.g. 'remember it'), "
+        "since no one will be there to clarify. Confirm creation only after "
+        "actually calling create_workflow — never claim a schedule exists "
+        "without having stored it."
+    ),
 }
 
 _AGENT_DESCRIPTIONS = {
@@ -286,6 +327,7 @@ _AGENT_DESCRIPTIONS = {
     "agent-coding": "Reads, writes, and runs code in a sandboxed directory.",
     "agent-memory": "Stores and recalls JARVIS's durable memories.",
     "agent-desktop": "Controls the user's real computer via a paired companion device.",
+    "agent-workflow": "Creates, lists, and deletes JARVIS's own scheduled automation.",
 }
 
 
