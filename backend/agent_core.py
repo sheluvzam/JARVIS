@@ -90,6 +90,11 @@ def build_hooks(mind_store, ws_manager) -> dict[str, list[HookMatcher]]:
         return {}
 
     async def _on_tool_use(input_data, tool_use_id, context):
+        # Registered for both PostToolUse and PostToolUseFailure — usage
+        # counting should reflect that a tool was actually invoked
+        # regardless of whether the call succeeded (confirmed missing during
+        # testing: WebFetch calls that errored/retried weren't counted when
+        # this only listened on PostToolUse).
         tool_id = agent_roster.SDK_TOOL_NAME_TO_TOOL_ID.get(input_data["tool_name"])
         if tool_id:
             mind_store.record_tool_use(tool_id)
@@ -99,6 +104,7 @@ def build_hooks(mind_store, ws_manager) -> dict[str, list[HookMatcher]]:
         "SubagentStart": [HookMatcher(matcher=None, hooks=[_on_subagent_start])],
         "SubagentStop": [HookMatcher(matcher=None, hooks=[_on_subagent_stop])],
         "PostToolUse": [HookMatcher(matcher=None, hooks=[_on_tool_use])],
+        "PostToolUseFailure": [HookMatcher(matcher=None, hooks=[_on_tool_use])],
     }
 
 
