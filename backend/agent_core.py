@@ -30,6 +30,7 @@ from claude_agent_sdk import (
 
 from backend import agent_roster
 from backend.companion import CompanionBridge, CompanionError
+from backend.task_store import TaskStore, TaskValidationError
 from backend.workflow_store import WorkflowStore, WorkflowValidationError
 
 # Default per-broadcast activity level while a sub-agent is working — the
@@ -256,6 +257,97 @@ def build_workflow_mcp_server(workflow_store: WorkflowStore):
     )
 
 
+def build_tasks_mcp_server(task_store: TaskStore, ws_manager):
+    """The Tasks sub-agent's real tools — task CRUD plus focus-session
+    start/end/status, both backed by TaskStore. Bundled together (not two
+    separate sub-agents) since both are lightweight personal-productivity
+    state with no complex real-world side effects — same reasoning as
+    Memory bundling remember/recall."""
+
+    @tool("create_task", "Create a new open task.", {"title": str, "notes": str})
+    async def _create_task(args: dict) -> dict:
+        try:
+            task = task_store.create_task(args["title"], notes=args.get("notes"))
+        except TaskValidationError as exc:
+            return _text_result(f"Could not create task: {exc}")
+        ws_manager.broadcast({"type": "task_created", "task": task})
+        return _text_result(f"Created task ({task['id']}): \"{task['title']}\".")
+
+    @tool("list_tasks", "List tasks, optionally filtered by status.", {"status_filter": str})
+    async def _list_tasks(args: dict) -> dict:
+        try:
+            tasks = task_store.list_tasks(args.get("status_filter") or "open")
+        except TaskValidationError as exc:
+            return _text_result(f"Could not list tasks: {exc}")
+        if not tasks:
+            return _text_result("No tasks found.")
+        lines = [f"- ({t['id']}) [{t['status']}] {t['title']}" for t in tasks]
+        return _text_result("\n".join(lines))
+
+    @tool("complete_task", "Mark an open task as done.", {"task_id": str})
+    async def _complete_task(args: dict) -> dict:
+        task = task_store.complete_task(args["task_id"])
+        if task is None:
+            return _text_result(f"No open task found with id {args['task_id']}.")
+        ws_manager.broadcast({"type": "task_completed", "task": task})
+        return _text_result(f"Completed task ({task['id']}): \"{task['title']}\".")
+
+    @tool("delete_task", "Delete a task by id.", {"task_id": str})
+    async def _delete_task(args: dict) -> dict:
+        deleted = task_store.delete_task(args["task_id"])
+        if deleted:
+            ws_manager.broadcast({"type": "task_deleted", "task_id": args["task_id"]})
+            return _text_result(f"Deleted task {args['task_id']}.")
+        return _text_result(f"No task found with id {args['task_id']}.")
+
+    @tool(
+        "start_focus_session",
+        "Start a focus session with a label and optional planned duration in minutes. Only one can be "
+        "active at a time.",
+        {"label": str, "planned_minutes": int},
+    )
+    async def _start_focus_session(args: dict) -> dict:
+        try:
+            session = task_store.start_focus_session(args["label"], planned_minutes=args.get("planned_minutes"))
+        except TaskValidationError as exc:
+            return _text_result(f"Could not start focus session: {exc}")
+        ws_manager.broadcast({"type": "focus_started", "session": session})
+        return _text_result(f"Started focus session ({session['id']}): \"{session['label']}\".")
+
+    @tool("end_focus_session", "End the currently active focus session, if any.", {})
+    async def _end_focus_session(args: dict) -> dict:
+        session = task_store.end_focus_session()
+        if session is None:
+            return _text_result("No focus session is currently active.")
+        ws_manager.broadcast({"type": "focus_ended", "session": session})
+        return _text_result(f"Ended focus session ({session['id']}): \"{session['label']}\".")
+
+    @tool("get_focus_status", "Check whether a focus session is active, and how far into it we are.", {})
+    async def _get_focus_status(args: dict) -> dict:
+        status = task_store.get_focus_status(datetime.now(timezone.utc))
+        if not status["active"]:
+            return _text_result("No focus session is currently active.")
+        planned = f" of {status['planned_minutes']} planned" if status["planned_minutes"] else ""
+        over = " — over the planned duration" if status["over_planned"] else ""
+        return _text_result(
+            f"Active: \"{status['label']}\", {status['elapsed_minutes']} minute(s) elapsed{planned}{over}."
+        )
+
+    return create_sdk_mcp_server(
+        name="jarvis_tasks",
+        version="1.0.0",
+        tools=[
+            _create_task,
+            _list_tasks,
+            _complete_task,
+            _delete_task,
+            _start_focus_session,
+            _end_focus_session,
+            _get_focus_status,
+        ],
+    )
+
+
 def build_hooks(mind_store, ws_manager) -> dict[str, list[HookMatcher]]:
     async def _on_subagent_start(input_data, tool_use_id, context):
         agent_id = input_data["agent_type"]
@@ -289,27 +381,34 @@ def build_hooks(mind_store, ws_manager) -> dict[str, list[HookMatcher]]:
 
 
 def build_claude_agent_options(
-    mind_store, ws_manager, workspace_dir: Path, companion: CompanionBridge, workflow_store: WorkflowStore
+    mind_store,
+    ws_manager,
+    workspace_dir: Path,
+    companion: CompanionBridge,
+    workflow_store: WorkflowStore,
+    task_store: TaskStore,
 ) -> ClaudeAgentOptions:
     workspace_dir.mkdir(parents=True, exist_ok=True)
     memory_server = build_memory_mcp_server(mind_store, ws_manager)
     desktop_server = build_desktop_mcp_server(companion)
     workflow_server = build_workflow_mcp_server(workflow_store)
+    tasks_server = build_tasks_mcp_server(task_store, ws_manager)
     return ClaudeAgentOptions(
         mcp_servers={
             "jarvis_memory": memory_server,
             "jarvis_desktop": desktop_server,
             "jarvis_workflow": workflow_server,
+            "jarvis_tasks": tasks_server,
         },
         agents=agent_roster.build_agent_definitions(),
         allowed_tools=agent_roster.TOP_LEVEL_ALLOWED_TOOLS,
         cwd=str(workspace_dir),
         system_prompt=(
-            "You are JARVIS. You orchestrate five sub-agents — Research, "
-            "Coding, Memory, Desktop, and Workflow — and have no tools of "
-            "your own besides the Agent tool, which delegates to them. "
-            "Delegate real work to the appropriate sub-agent rather than "
-            "attempting it yourself. "
+            "You are JARVIS. You orchestrate six sub-agents — Research, "
+            "Coding, Memory, Desktop, Workflow, and Tasks — and have no "
+            "tools of your own besides the Agent tool, which delegates to "
+            "them. Delegate real work to the appropriate sub-agent rather "
+            "than attempting it yourself. "
             "Critical rule: if the user asks you to remember, note, or keep "
             "track of anything, you MUST delegate to the Memory sub-agent via "
             "the Agent tool before replying — never just reply as if you "
@@ -331,7 +430,12 @@ def build_claude_agent_options(
             "sub-agent via the Agent tool to actually create it before "
             "confirming — the same rule as Memory, for the same reason. "
             "Workflow schedules are always in UTC; if the user gives a local "
-            "time, ask for their UTC offset first rather than guessing it."
+            "time, ask for their UTC offset first rather than guessing it. "
+            "Critical rule: if the user asks you to add, complete, or delete "
+            "a task, or to start/end/check a focus session, you MUST "
+            "delegate to the Tasks sub-agent via the Agent tool and confirm "
+            "only after it actually happened — the same rule as Memory and "
+            "Workflow, for the same reason."
         ),
         hooks=build_hooks(mind_store, ws_manager),
         # "bypassPermissions" (--dangerously-skip-permissions) is refused by
