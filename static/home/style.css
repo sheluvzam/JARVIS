@@ -1,0 +1,25 @@
+/* Combined page layout only — loaded after /mind/style.css and
+   /chat/style.css, so these rules cascade over both without needing to
+   touch either standalone page's own styling. */
+
+#shell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+#app {
+  flex: 1;
+  min-width: 0; /* let the canvas shrink below its intrinsic size instead of pushing the dock off-screen */
+}
+
+/* Overrides chat/style.css's standalone centered-column rules (max-width,
+   auto margin) with a fixed-width docked panel instead. */
+#chat-dock {
+  flex: 0 0 26rem;
+  max-width: none;
+  margin: 0;
+  height: 100%;
+  border-left: 1px solid var(--panel-border);
+  background: var(--bg);
+}

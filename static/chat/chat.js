@@ -7,7 +7,7 @@
 // the chat bubble already shows. Both are the browser's own Web Speech
 // API — client-side, the user's own network, no backend involvement at
 // all, so none of this session's network-blocking issues apply here.
-const statsEl = document.getElementById("stats");
+const statsEl = document.getElementById("chat-stats");
 const logEl = document.getElementById("chat-log");
 const form = document.getElementById("composer");
 const input = document.getElementById("composer-input");

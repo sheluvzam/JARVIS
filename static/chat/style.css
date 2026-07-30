@@ -6,7 +6,7 @@ body {
   height: 100%;
 }
 
-#app {
+#chat-dock {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -15,7 +15,7 @@ body {
   padding: 0 1.5rem;
 }
 
-#header {
+#chat-header {
   position: static;
   flex: none;
   padding: 1.25rem 0 1rem;
