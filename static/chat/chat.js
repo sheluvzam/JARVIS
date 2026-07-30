@@ -117,9 +117,16 @@ form.addEventListener("submit", (event) => {
   ws.send(JSON.stringify({ type: "user_message", text }));
 });
 
-// Speech input — feature-detected. Browsers without SpeechRecognition
-// (Firefox, Safari as of this writing) simply keep the mic button hidden;
-// typing still works exactly as before.
+// Speech input — feature-detected, not browser-sniffed. Chrome/Edge and
+// desktop Safari (14.1+, via the webkitSpeechRecognition prefix) all work
+// here with zero extra code. Firefox has no SpeechRecognition in stable
+// release (still behind an experimental flag as of this writing) and iOS
+// browsers of any kind can't support it at all (Apple requires iOS
+// browsers to use WebKit, which lacks the implementation there) — both
+// simply keep the mic button hidden; typing still works exactly as before.
+// Real Firefox support would need a fundamentally different approach
+// (record audio client-side, transcribe server-side) — deliberately out of
+// scope for now.
 const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (SpeechRecognitionImpl) {
