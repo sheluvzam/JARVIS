@@ -127,7 +127,10 @@ def build_claude_agent_options(mind_store, ws_manager, workspace_dir: Path) -> C
             "remembered something without actually calling Memory to store "
             "it. A confirmation you didn't earn by actually storing the fact "
             "is a lie to the user. Likewise check Memory for relevant context "
-            "before answering questions about what's been said before."
+            "before answering questions about what's been said before. "
+            "Research already saves its own durable findings to memory "
+            "directly — don't also delegate a research summary to Memory "
+            "afterward, that would store it twice."
         ),
         hooks=build_hooks(mind_store, ws_manager),
         # "bypassPermissions" (--dangerously-skip-permissions) is refused by

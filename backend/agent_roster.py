@@ -21,7 +21,13 @@ AGENTS: list[dict] = [
         "id": "agent-research",
         "label": "Research Agent",
         "role": "Research",
-        "tool_ids": ["tool-research-websearch", "tool-research-webfetch"],
+        # Includes tool-memory-remember: Research saves its own durable
+        # findings directly (see _AGENT_PROMPTS below) rather than always
+        # routing back through the orchestrator to delegate to Memory.
+        # This doesn't change the tool's mind-viz ownership — agent_tool
+        # edges in memory_store.py are keyed by TOOLS' owner_agent_id,
+        # which stays agent-memory, so /mind still draws it under Memory.
+        "tool_ids": ["tool-research-websearch", "tool-research-webfetch", "tool-memory-remember"],
     },
     {
         "id": "agent-coding",
@@ -145,7 +151,15 @@ TOP_LEVEL_ALLOWED_TOOLS = ["Agent"] + [t["sdk_tool_name"] for t in TOOLS]
 _AGENT_PROMPTS = {
     "agent-research": (
         "You are JARVIS's research sub-agent. Use WebSearch/WebFetch to find "
-        "and verify information, then hand back a concise, sourced summary."
+        "and verify information, then hand back a concise, sourced summary. "
+        "If what you found is a durable fact worth recalling later — not "
+        "just the answer to this one question — call `remember` yourself "
+        "with ONE concise entry summarizing it, after you finish "
+        "researching. Don't call `remember` once per search or fetch, and "
+        "don't remember anything that's only useful for this reply. Same "
+        "boilerplate-free style Memory uses: write just the fact itself, "
+        "tersely, never the user's identity or the question that prompted "
+        "it."
     ),
     "agent-coding": (
         "You are JARVIS's coding sub-agent. Read, write, and run code inside "
