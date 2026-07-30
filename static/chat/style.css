@@ -1,0 +1,117 @@
+/* Additive only — :root palette/custom properties come from /mind/style.css,
+   loaded first in index.html. Do not redeclare :root here. */
+
+html,
+body {
+  height: 100%;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+#header {
+  position: static;
+  flex: none;
+  padding: 1.25rem 0 1rem;
+}
+
+#chat-log {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.5rem 0 1rem;
+}
+
+.msg {
+  max-width: 80%;
+  padding: 0.6rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.msg.user {
+  align-self: flex-end;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--ink);
+}
+
+.msg.assistant {
+  align-self: flex-start;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--ink);
+}
+
+.msg.system {
+  align-self: center;
+  color: var(--dim);
+  font-size: 0.76rem;
+  background: none;
+  border: none;
+  padding: 0.2rem 0;
+}
+
+.msg.error {
+  align-self: center;
+  color: #ff6b6b;
+  font-size: 0.8rem;
+  background: none;
+  border: none;
+}
+
+#composer {
+  flex: none;
+  display: flex;
+  gap: 0.6rem;
+  padding: 1rem 0 1.5rem;
+  border-top: 1px solid var(--panel-border);
+}
+
+#composer-input {
+  flex: 1;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+
+#composer-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#composer-input::placeholder {
+  color: var(--dim);
+}
+
+#composer-send {
+  background: var(--accent);
+  color: #0a0912;
+  border: none;
+  border-radius: 10px;
+  padding: 0 1.1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#composer-send:disabled,
+#composer-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
