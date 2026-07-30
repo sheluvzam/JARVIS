@@ -61,17 +61,28 @@ function setStatsError(message) {
   statsEl.classList.add("error");
 }
 
+// Sized off #app's own box, not the window — on the standalone /mind page
+// #app fills the viewport so this is identical to window sizing, but on
+// the combined home page #app is only the left portion of a flex layout
+// (a chat panel docks the rest), so window dimensions would be wrong.
+function getContainerSize() {
+  const app = document.getElementById("app");
+  return { width: app.clientWidth, height: app.clientHeight };
+}
+
 function buildRenderer() {
   const canvas = document.getElementById("scene-canvas");
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  const { width, height } = getContainerSize();
+  renderer.setSize(width, height);
   renderer.setClearColor(0x050508, 1);
   return renderer;
 }
 
 function buildCamera() {
-  const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
+  const { width, height } = getContainerSize();
+  const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 2000);
   camera.position.set(0, 42, 108);
   return camera;
 }
@@ -148,8 +159,9 @@ function buildMembrane() {
 function buildComposer(renderer, scene, camera) {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  const { width, height } = getContainerSize();
   const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    new THREE.Vector2(width, height),
     0.85, // strength
     0.65, // radius
     0.18 // threshold — tuned low so emissive node/halo/membrane materials (Tier 3) bloom
@@ -160,7 +172,8 @@ function buildComposer(renderer, scene, camera) {
 
 function buildCssRenderer() {
   const cssRenderer = new CSS2DRenderer();
-  cssRenderer.setSize(window.innerWidth, window.innerHeight);
+  const { width, height } = getContainerSize();
+  cssRenderer.setSize(width, height);
   const el = cssRenderer.domElement;
   el.style.position = "absolute";
   el.style.top = "0";
@@ -184,8 +197,7 @@ function initVoid() {
   Object.assign(state, { scene, renderer, camera, controls, composer, bloomPass, cssRenderer });
 
   const onResize = () => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const { width, height } = getContainerSize();
     renderer.setSize(width, height);
     composer.setSize(width, height);
     cssRenderer.setSize(width, height);

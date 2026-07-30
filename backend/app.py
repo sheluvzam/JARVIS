@@ -32,6 +32,7 @@ from backend.ws_manager import ConnectionManager
 
 STATIC_MIND_DIR = Path(__file__).resolve().parent.parent / "static" / "mind"
 STATIC_CHAT_DIR = Path(__file__).resolve().parent.parent / "static" / "chat"
+STATIC_HOME_DIR = Path(__file__).resolve().parent.parent / "static" / "home"
 
 
 @asynccontextmanager
@@ -135,6 +136,9 @@ async def ws_chat(websocket: WebSocket):
 
 
 # Static frontends last — their catch-alls (html=True) must not shadow API
-# routes.
+# routes. "/" is the broadest possible prefix (matches every path), so it
+# must be registered after every other route and mount, or it would shadow
+# all of them.
 app.mount("/mind", StaticFiles(directory=STATIC_MIND_DIR, html=True), name="mind-static")
 app.mount("/chat", StaticFiles(directory=STATIC_CHAT_DIR, html=True), name="chat-static")
+app.mount("/", StaticFiles(directory=STATIC_HOME_DIR, html=True), name="home-static")
