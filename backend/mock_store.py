@@ -229,10 +229,10 @@ class MockMindStore:
         ]
 
         regions = [
-            {"id": "core", "label": "Core", "color_hex": "#f4e9ff", "node_count": 1},
-            {"id": "memories", "label": "Memories", "color_hex": "#8a5cff", "node_count": len(served)},
-            {"id": "tools", "label": "Tools", "color_hex": "#4fd1c5", "node_count": len(self.tools)},
-            {"id": "agents", "label": "Agents", "color_hex": "#ffb454", "node_count": len(self.agents)},
+            {"id": "core", "label": "Core", "color_hex": "#eaffff", "node_count": 1},
+            {"id": "memories", "label": "Memories", "color_hex": "#00d9ff", "node_count": len(served)},
+            {"id": "tools", "label": "Tools", "color_hex": "#4fd1ff", "node_count": len(self.tools)},
+            {"id": "agents", "label": "Agents", "color_hex": "#ff9d3d", "node_count": len(self.agents)},
         ]
 
         node_count = 1 + len(served) + len(self.tools) + len(self.agents)

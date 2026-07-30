@@ -21,5 +21,6 @@
   margin: 0;
   height: 100%;
   border-left: 1px solid var(--panel-border);
+  box-shadow: -12px 0 24px -18px rgba(0, 217, 255, 0.4);
   background: var(--bg);
 }

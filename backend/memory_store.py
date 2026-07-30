@@ -162,10 +162,10 @@ class RealMindStore:
         ]
 
         regions = [
-            {"id": "core", "label": "Core", "color_hex": "#f4e9ff", "node_count": 1},
-            {"id": "memories", "label": "Memories", "color_hex": "#8a5cff", "node_count": len(memory_nodes)},
-            {"id": "tools", "label": "Tools", "color_hex": "#4fd1c5", "node_count": len(tools_snapshot)},
-            {"id": "agents", "label": "Agents", "color_hex": "#ffb454", "node_count": len(agents_snapshot)},
+            {"id": "core", "label": "Core", "color_hex": "#eaffff", "node_count": 1},
+            {"id": "memories", "label": "Memories", "color_hex": "#00d9ff", "node_count": len(memory_nodes)},
+            {"id": "tools", "label": "Tools", "color_hex": "#4fd1ff", "node_count": len(tools_snapshot)},
+            {"id": "agents", "label": "Agents", "color_hex": "#ff9d3d", "node_count": len(agents_snapshot)},
         ]
 
         node_count = 1 + len(memory_nodes) + len(tools_snapshot) + len(agents_snapshot)
